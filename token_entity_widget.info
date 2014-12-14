@@ -1,0 +1,3 @@
+name = Token Entity Widget
+description = This is a new widget that is an alternative to the token insert entity module.
+core = 7.x

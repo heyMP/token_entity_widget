@@ -1,0 +1,67 @@
+<?php
+
+define('TOKEN_EMBED_STRING', '[embed:render:@viewmode:@type:@id]');
+
+
+/**
+ * Implements hook_form_alter().
+ */
+function token_entity_widget_form_alter(&$form, &$form_state, $form_id) {
+  $view_mode_settings = field_view_mode_settings($form['#entity_type'], $form['#bundle']);
+  $inline_entity = $form['field_book_assets']['und']['entities'];
+
+  foreach ($inline_entity as $key => $entity) {
+    if (is_numeric($key)) {
+      // Get a list of viewmodes for the current entity.
+      $viewmodes = field_view_mode_settings($inline_entity['#entity_type'], $entity['#entity']->type);
+      // Only show enabled viewmodes.
+      $viewmodes_enabled = _token_entity_widget_viewmode_enabled($viewmodes);
+
+      // Create the select list
+      $form['field_book_assets']['und']['entities'][$key]['actions']['ief_token'] = array(
+        '#title' => t('Generate embed token'),
+        '#type' => 'select',
+        '#options' => $viewmodes_enabled,
+        '#ajax' => array(
+          'callback' => 'token_entity_widget_autocheckboxes_callback',
+          'wrapper' => 'ief-token-result-' . $key,
+        ),
+        '#suffix' => format_string('<div id="ief-token-result-@key"></div>', array('@key' => $key)),
+      );
+    }
+  }
+}
+
+function token_entity_widget_autocheckboxes_callback($form, $form_state) {
+  $entity_type = $form['#entity_type'];
+  $entity_id = entity_id($form['#entity_type'], $form['#entity']);
+  $viewmode = $form_state['triggering_element']['#value'];
+  $token_wrapper_id =  $form_state['triggering_element']['#ajax']['wrapper'];
+  // Generate the embed token
+  $token = format_string(TOKEN_EMBED_STRING, array('@viewmode' => $viewmode, '@type' => $entity_type, '@id' => $entity_id));
+
+  // Return a token that is wrapped in the same div that it is replacing. We are
+  // doing this so we can keep generating tokens.
+  return array(
+    '#type' => 'markup',
+    '#markup' => format_string('<div id="@divid">@token</div>', array('@divid' => $token_wrapper_id, '@token' => $token)),
+  );
+}
+
+/**
+ * Helper function for returning only enabled viewmodes from an array of
+ * results from the field_view_mode_settings() function.
+ *
+ * @return array     An key/value array of viewmodes.
+ */
+function _token_entity_widget_viewmode_enabled($viewmodes) {
+  $select_array = array();
+  foreach ($viewmodes as $key => $viewmode) {
+    // If the viewmode is enabled or if its full.
+    if ($viewmode['custom_settings'] == TRUE || $key == 'full') {
+      $select_array[$key] = $key;
+    }
+  }
+
+  return $select_array;
+}
