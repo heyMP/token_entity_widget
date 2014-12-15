@@ -12,6 +12,14 @@ function token_entity_widget_form_alter(&$form, &$form_state, $form_id) {
 
   foreach ($inline_entity as $key => $entity) {
     if (is_numeric($key)) {
+      if (isset($entity['#entity']->nid)) {
+        $entity_id = $entity['#entity']->nid;
+        $entity_type = 'node';
+      }
+      else {
+        $entity_type = $entity['#entity']->type;
+        $entity_id = entity_id($entity_type, $entity['#entity']);
+      }
       // Get a list of viewmodes for the current entity.
       $viewmodes = field_view_mode_settings($inline_entity['#entity_type'], $entity['#entity']->type);
       // Only show enabled viewmodes.
@@ -26,6 +34,10 @@ function token_entity_widget_form_alter(&$form, &$form_state, $form_id) {
           'callback' => 'token_entity_widget_autocheckboxes_callback',
           'wrapper' => 'ief-token-result-' . $key,
         ),
+        '#attributes' => array(
+          'data-entitytype' => $entity_type,
+          'data-entityid' => $entity_id,
+        ),
         '#suffix' => format_string('<div id="ief-token-result-@key"></div>', array('@key' => $key)),
       );
     }
@@ -33,10 +45,11 @@ function token_entity_widget_form_alter(&$form, &$form_state, $form_id) {
 }
 
 function token_entity_widget_autocheckboxes_callback($form, $form_state) {
-  $entity_type = $form['#entity_type'];
-  $entity_id = entity_id($form['#entity_type'], $form['#entity']);
+  $entity_type = $form_state['triggering_element']['#attributes']['data-entitytype'];
+  $entity_id = $form_state['triggering_element']['#attributes']['data-entityid'];
   $viewmode = $form_state['triggering_element']['#value'];
   $token_wrapper_id =  $form_state['triggering_element']['#ajax']['wrapper'];
+
   // Generate the embed token
   $token = format_string(TOKEN_EMBED_STRING, array('@viewmode' => $viewmode, '@type' => $entity_type, '@id' => $entity_id));
 
